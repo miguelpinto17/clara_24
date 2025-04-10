@@ -3,92 +3,232 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Memory Match Game</title>
+  <title>Good Luck, Queen C!</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
+    #introScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: url('./images/image9.webp') no-repeat center center;
+      background-size: cover;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      flex-direction: column;
+      z-index: 1000;
+      overflow: hidden;
     }
-    h1 {
-      margin-bottom: 10px;
+    #particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
     }
-    .controls {
-      margin-bottom: 15px;
-    }
-    .game-board {
-      display: grid;
-      grid-template-columns: repeat(4, 100px);
-      grid-gap: 10px;
-      margin-bottom: 20px;
-    }
-    .card {
-      width: 100px;
-      height: 100px;
-      position: relative;
+    #startButton {
+      font-size: 2.5rem;
+      padding: 20px 40px;
+      background-color: rgba(255, 255, 255, 0.85);
+      border: none;
+      border-radius: 12px;
       cursor: pointer;
-      perspective: 1000px;
+      box-shadow: 0 0 15px gold;
+      transition: transform 0.3s;
+      position: relative;
+      overflow: hidden;
+      z-index: 2;
     }
-    .card-inner {
+    #startButton::after {
+      content: "";
       position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
-      transform-style: preserve-3d;
-      transition: transform 0.5s;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,0.3) 0%, transparent 80%);
+      animation: sparkle 1s infinite ease-in-out;
+      pointer-events: none;
     }
-    .card.flipped .card-inner {
-      transform: rotateY(180deg);
+    @keyframes sparkle {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.6;
+      }
+      50% {
+        transform: scale(1.2);
+        opacity: 1;
+      }
     }
-    .card-front, .card-back {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      backface-visibility: hidden;
-      border-radius: 8px;
+    #startButton:hover {
+      transform: scale(1.05);
     }
-    .card-front {
-      background: #ccc;
+    #countdownOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+      font-size: 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      display: none;
     }
-    .card-back {
-      transform: rotateY(180deg);
-      background-size: cover;
-      background-position: center;
+    #victoryVideo {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80vw;
+      height: 80vh;
+      object-fit: cover;
+      z-index: 2000;
+      display: none;
     }
-    #message {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: green;
+    #rewardButton {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      padding: 20px 40px;
+      background-color: gold;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      z-index: 1500;
+      display: none;
+      box-shadow: 0 0 20px white;
     }
   </style>
 </head>
 <body>
-  <h1>Memory Match Game</h1>
-  <div class="controls">
-    <span>Time Left: <span id="timer">24</span>s</span> | 
+  <div id="introScreen">
+    <canvas id="particles"></canvas>
+    <button id="startButton">Dare to Play?</button>
+  </div>
+
+  <div id="countdownOverlay"></div>
+  <button id="rewardButton">You won! Ready for the reward?</button>
+  <video id="victoryVideo" src="./videos/video.mp4" controls></video>
+
+  <h1 style="display:none">Memory Match Game</h1>
+  <button id="toggleMusic" class="sound-toggle" style="display:none">🔊</button>
+  <div class="controls" style="display:none">
     <span>Score: <span id="score">0</span></span>
     <button onclick="restartGame()">Restart</button>
   </div>
-  <div class="game-board" id="gameBoard"></div>
+  <div class="game-board" id="gameBoard" style="display:none"></div>
   <div id="message"></div>
+
   <audio id="matchSound" src="match.mp4"></audio>
+  <audio id="backgroundMusic" src="./sounds/music.mp3" loop></audio>
 
   <script>
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function createParticles() {
+      for (let i = 0; i < 100; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 2 + 1,
+          speedY: Math.random() * 1 + 0.5,
+          alpha: Math.random() * 0.5 + 0.5,
+        });
+      }
+    }
+
+    function drawParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "white";
+      particles.forEach(p => {
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        p.y += p.speedY;
+        if (p.y > canvas.height) p.y = 0;
+      });
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(drawParticles);
+    }
+
+    createParticles();
+    drawParticles();
+
     const images = [
-      'image1.jpg', 'image2.jpg', 'image3.jpg', 'image4.jpg',
-      'image5.jpg', 'image6.jpg', 'image7.jpg', 'image8.jpg'
+      './images/image1.jpg', './images/image2.jpg', './images/image3.jpg', './images/image4.jpg',
+      './images/image5.jpg', './images/image6.jpg', './images/image7.jpg', './images/image8.jpg'
     ];
 
     let cards = [];
     let flippedCards = [];
     let matchedCards = [];
     let score = 0;
-    let timerInterval;
-    let timeLeft = 24;
     const matchSound = document.getElementById('matchSound');
+    const backgroundMusic = document.getElementById('backgroundMusic');
+    const toggleBtn = document.getElementById('toggleMusic');
+    const victoryVideo = document.getElementById('victoryVideo');
+    const countdownOverlay = document.getElementById('countdownOverlay');
+    const rewardButton = document.getElementById('rewardButton');
+
+    toggleBtn.addEventListener('click', () => {
+      if (backgroundMusic.paused) {
+        backgroundMusic.play();
+        toggleBtn.textContent = '🔊';
+      } else {
+        backgroundMusic.pause();
+        toggleBtn.textContent = '🔇';
+      }
+    });
+
+    document.getElementById('startButton').addEventListener('click', () => {
+      document.getElementById('introScreen').style.display = 'none';
+      countdownOverlay.style.display = 'flex';
+      let count = 3;
+      countdownOverlay.textContent = count;
+      const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countdownOverlay.textContent = count;
+        } else {
+          clearInterval(interval);
+          countdownOverlay.style.display = 'none';
+          backgroundMusic.play();
+          document.querySelector('h1').style.display = 'block';
+          document.getElementById('toggleMusic').style.display = 'inline-block';
+          document.querySelector('.controls').style.display = 'block';
+          document.getElementById('gameBoard').style.display = 'grid';
+          startGame();
+        }
+      }, 1000);
+    });
+
+    rewardButton.addEventListener('click', () => {
+      rewardButton.style.display = 'none';
+      victoryVideo.style.display = 'block';
+      victoryVideo.muted = false;
+      victoryVideo.play();
+    });
 
     function startGame() {
       cards = [...images, ...images];
@@ -99,20 +239,8 @@
       flippedCards = [];
       matchedCards = [];
       score = 0;
-      timeLeft = 24;
       document.getElementById('score').textContent = score;
-      document.getElementById('timer').textContent = timeLeft;
       document.getElementById('message').textContent = '';
-
-      clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        document.getElementById('timer').textContent = timeLeft;
-        if (timeLeft === 0) {
-          clearInterval(timerInterval);
-          endGame("Time's up! Try again!");
-        }
-      }, 1000);
 
       cards.forEach((img) => {
         const card = document.createElement('div');
@@ -146,8 +274,10 @@
               matchSound.play();
               flippedCards = [];
               if (matchedCards.length === cards.length) {
-                clearInterval(timerInterval);
                 endGame("🎉 Congratulations! You matched everything! 🎉");
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+                rewardButton.style.display = 'block';
               }
             } else {
               setTimeout(() => {
@@ -164,15 +294,16 @@
     }
 
     function restartGame() {
+      victoryVideo.style.display = 'none';
+      victoryVideo.pause();
+      victoryVideo.currentTime = 0;
+      rewardButton.style.display = 'none';
       startGame();
     }
 
     function endGame(message) {
       document.getElementById('message').textContent = message;
     }
-
-    // Start the game when page loads
-    window.onload = startGame;
   </script>
 </body>
 </html>
